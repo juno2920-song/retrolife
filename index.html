@@ -85,14 +85,14 @@
 
     /* 機械按鍵壓感反饋：向右下微移 2.5px，厚度隨之壓扁 */
     .tile-3d:active {
-      transform: translate(1px, 4px);
+      transform: translate(1.5px, 4.5px);
       box-shadow: 
         inset 1px 1px 0px rgba(255, 255, 255, 0.08),
         0px 1px 0px rgba(0, 0, 0, 0.4),
         0px 2px 4px rgba(0, 0, 0, 0.8);
     }
 
-    /* 編輯抖動狀態下弱化 active 效果以防拖曳衝突 */
+    /* 編輯狀態下，微調壓扁效果避免與控制器衝突 */
     .tile-3d-editing {
       box-shadow: 
         inset 1px 1px 0px rgba(255, 255, 255, 0.12),
@@ -100,7 +100,7 @@
         0px 4px 8px rgba(0, 0, 0, 0.5);
     }
 
-    /* 特殊米色(和風瓷器) 按鍵的專屬立體側邊 */
+    /* 經典米色和風瓷磚按鍵專屬側盤與按壓感 */
     .tile-3d-beige {
       box-shadow: 
         inset 1px 1px 0px rgba(255, 255, 255, 0.45),
@@ -108,7 +108,7 @@
         0px 8px 16px rgba(0, 0, 0, 0.6);
     }
     .tile-3d-beige:active {
-      transform: translate(1px, 4px);
+      transform: translate(1.5px, 4.5px);
       box-shadow: 
         inset 1px 1px 0px rgba(255, 255, 255, 0.2),
         0px 1px 0px #c5beb1,
@@ -177,7 +177,6 @@
       }
     }
 
-    // 擴充自訂圖標組
     const Icons = {
       Calendar: () => (
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
@@ -237,7 +236,7 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
       ),
       Activity: () => (
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
       )
     };
 
@@ -267,7 +266,6 @@
       const [isEditing, setIsEditing] = useState(false);
       const longPressTimeout = useRef(null);
       const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
-      const [draggedIndex, setDraggedIndex] = useState(null);
 
       const showToast = (message, type = 'success') => {
         setToast({ show: true, message, type });
@@ -341,7 +339,6 @@
             { id: 'settings', type: 'settings', w: 1, h: 1, color: 'slate' }
           ]);
           
-          // 確保歷史瓷磚也有 w 與 h 的定義以防格式出錯
           const upgradedTiles = loadedTiles.map(t => {
             if (t.w === undefined) {
               t.w = t.size === 3 ? 3 : t.size === 2 ? 2 : 1;
@@ -393,7 +390,6 @@
         loadAndMigrate();
       }, []);
 
-      // 自動同步至 IndexedDB
       useEffect(() => { if (isLoaded) setDBData('tile_layout', 'data', tiles); }, [tiles, isLoaded]);
       useEffect(() => { if (isLoaded) setDBData('events', 'data', events); }, [events, isLoaded]);
       useEffect(() => { if (isLoaded) setDBData('todos', 'data', todos); }, [todos, isLoaded]);
@@ -452,9 +448,27 @@
         };
       }
 
+      // 🔴 智能雙週（14天）首頁縮短日期計算：解決高度溢出與遮擋
+      const getTwoWeeksDays = (targetDateStr) => {
+        const today = new Date(targetDateStr);
+        const dayOfWeek = today.getDay(); // 0 是週日
+        const sunday = new Date(today);
+        sunday.setDate(today.getDate() - dayOfWeek); // 回推到本週週日
+
+        const days = [];
+        for (let i = 0; i < 14; i++) {
+          const nextDay = new Date(sunday);
+          nextDay.setDate(sunday.getDate() + i);
+          days.push({
+            date: nextDay,
+            isCurrentMonth: nextDay.getMonth() === today.getMonth()
+          });
+        }
+        return days;
+      };
+
       const weekDaysZH = ["週日", "週一", "週二", "週三", "週四", "週五", "週六"];
 
-      // 🔴 Google 與 iCloud 同步程序
       const handleGoogleSync = () => {
         playClickSound();
         if (!syncSettings.googleClientId || !syncSettings.googleApiKey) {
@@ -739,7 +753,11 @@
         return days;
       };
 
+      // 🔴 行事曆子頁面仍顯示整月大格網
       const daysArray = getDaysInMonth(currentDate);
+
+      // 🔴 首頁專屬智能雙週 (14天)
+      const homeTwoWeeksArray = getTwoWeeksDays(selectedDateStr);
 
       const handleBackgroundTouchStart = (e) => {
         if (activeApp !== null) return;
@@ -772,7 +790,6 @@
 
       const handleDragEnd = () => { setDraggedIndex(null); };
 
-      // 🔴 自由調整指定方塊的寬度和高度
       const resizeTile = (id, dimension, value) => {
         playClickSound();
         setTiles(tiles.map(tile => {
@@ -861,7 +878,6 @@
 
       const { totals: financeTotals, grandTotal: financeGrandTotal } = getFinancialAnalysis();
 
-      // IndexedDB 載入時
       if (!isLoaded) {
         return (
           <div className="min-h-screen bg-[#0d0e10] flex flex-col items-center justify-center p-6 text-center">
@@ -881,7 +897,7 @@
           onTouchEnd={handleBackgroundTouchEnd}
           onClick={handleBackgroundClick}
         >
-          {/* 在手機上自動 100% 滿版，在電腦上呈現居中精緻尺寸 */}
+          {}
           <div className="w-full min-h-screen md:min-h-[850px] md:max-w-[430px] bg-[#14161a] md:rounded-[40px] md:border md:border-neutral-800 md:shadow-[0_30px_70px_rgba(0,0,0,0.8)] flex flex-col relative overflow-hidden transition-all duration-300">
             
             {/* 通知提示 */}
@@ -906,18 +922,18 @@
                 <div className="space-y-2.5">
                   {/* 編輯指示列 */}
                   {isEditing && (
-                    <div className="bg-[#cf2b1f] text-white text-[10px] font-bold py-2 px-3 rounded-lg flex justify-between items-center animate-pulse shadow-md z-10">
-                      <span>✨ 拖曳互換位置，或在方塊中央控制器調整寬高！</span>
+                    <div className="bg-[#cf2b1f] text-white text-xs font-bold py-2.5 px-3.5 rounded-lg flex justify-between items-center animate-pulse shadow-md z-10">
+                      <span>✨ 拖曳互換，或點選方塊中央控制器調整寬高！</span>
                       <button 
                         onClick={() => { playClickSound(); setIsEditing(false); }}
-                        className="bg-black/25 hover:bg-black/40 px-2 py-0.5 rounded text-[9px] font-black"
+                        className="bg-black/25 hover:bg-black/40 px-2.5 py-1 rounded text-xs font-black"
                       >
                         完成
                       </button>
                     </div>
                   )}
 
-                  {/* 🎨 STREAMING_CHUNK: 瓷磚拼接視窗：支援 W(1~3) 與 H(1~3) 動態拉伸，格網行高 115px，寬度 col-span-W */}
+                  {/* 🎨 STREAMING_CHUNK: Rendering live 3D mechanical tiles grid... */}
                   <div className="grid grid-cols-3 gap-1.5 auto-rows-[115px]">
                     {tiles.map((tile, idx) => {
                       const colSpanClass = tile.w === 3 ? 'col-span-3' : tile.w === 2 ? 'col-span-2' : 'col-span-1';
@@ -938,39 +954,36 @@
                             onDragEnd={handleDragEnd}
                             className={`${colSpanClass} ${rowSpanClass} ${tile3DClass}`}
                           >
-                            {/* ⏳ 時鐘內容：依 W 和 H 進行精確自適應 */}
+                            {/* ⏳ 時鐘內容：放大文字與醒目排版 */}
                             {tile.w === 1 ? (
-                              // 寬度 1: 極簡數位時鐘
                               <div className="flex flex-col justify-between h-full w-full">
-                                <span className="text-[8px] opacity-60 font-black tracking-widest">CLOCK</span>
-                                <div className="text-xl font-black font-mono tracking-tight text-center my-auto">
+                                <span className="text-[10px] opacity-60 font-black tracking-widest">CLOCK</span>
+                                <div className="text-2xl font-black font-mono tracking-tight text-center my-auto">
                                   {systemTime.toLocaleTimeString('zh-HK', { hour12: false, hour: '2-digit', minute: '2-digit' })}
                                 </div>
-                                <span className="text-[8px] font-bold opacity-80 text-center">{systemTime.getMonth() + 1}/{systemTime.getDate()} ({weekDaysZH[systemTime.getDay()].slice(-1)})</span>
+                                <span className="text-[10px] font-bold opacity-80 text-center">{systemTime.getMonth() + 1}/{systemTime.getDate()} ({weekDaysZH[systemTime.getDay()].slice(-1)})</span>
                               </div>
                             ) : tile.w === 2 ? (
-                              // 寬度 2: 指針微鐘面與數位時鐘
-                              <div className="flex items-center gap-3 w-full h-full">
-                                <div className="relative w-11 h-11 rounded-full border border-neutral-500/40 flex items-center justify-center bg-zinc-950/80 shrink-0">
-                                  <div className="absolute w-[2px] h-[10px] bg-zinc-300 top-[12px] origin-bottom transform rotate-45"></div>
-                                  <div className="absolute w-[1px] h-[14px] bg-[#cf2b1f] top-[8px] origin-bottom transform rotate-[140deg]"></div>
+                              <div className="flex items-center gap-4 w-full h-full">
+                                <div className="relative w-12 h-12 rounded-full border border-neutral-500/40 flex items-center justify-center bg-zinc-950/80 shrink-0">
+                                  <div className="absolute w-[2px] h-[12px] bg-zinc-300 top-[12px] origin-bottom transform rotate-45"></div>
+                                  <div className="absolute w-[1px] h-[16px] bg-[#cf2b1f] top-[8px] origin-bottom transform rotate-[140deg]"></div>
                                   <div className="w-1.5 h-1.5 bg-zinc-100 rounded-full z-10"></div>
                                 </div>
                                 <div className="min-w-0 flex-1 flex flex-col justify-center">
-                                  <div className="text-2xl font-black font-mono tracking-tighter leading-none">
+                                  <div className="text-3xl font-black font-mono tracking-tighter leading-none">
                                     {systemTime.toLocaleTimeString('zh-HK', { hour12: false, hour: '2-digit', minute: '2-digit' })}
                                   </div>
-                                  <div className="text-[10px] font-bold opacity-80 mt-1 truncate">
+                                  <div className="text-xs font-black opacity-80 mt-1 truncate">
                                     {systemTime.getMonth() + 1}月{systemTime.getDate()}日 {weekDaysZH[systemTime.getDay()]}
                                   </div>
                                 </div>
                               </div>
                             ) : (
-                              // 寬度 3: 完整的機械儀表板（指針鐘、大數位、模擬電池狀態）
                               <div className="flex flex-col justify-between h-full w-full">
                                 <div className="flex justify-between items-center border-b border-white/5 pb-1">
-                                  <span className="text-[9px] opacity-60 font-black tracking-widest uppercase">CLOCK PANEL</span>
-                                  <span className="text-[8px] bg-red-950/20 px-1.5 py-0.5 rounded font-mono text-red-400">SYS_ON</span>
+                                  <span className="text-[10px] opacity-60 font-black tracking-widest uppercase">CLOCK PANEL</span>
+                                  <span className="text-[9px] bg-red-950/20 px-2 py-0.5 rounded font-mono text-red-400">SYS_ON</span>
                                 </div>
                                 <div className="flex items-center justify-around flex-1 py-1">
                                   <div className="relative w-16 h-16 rounded-full border-2 border-neutral-500/40 flex items-center justify-center bg-zinc-950/90 shadow-inner">
@@ -979,16 +992,16 @@
                                     <div className="w-2 h-2 bg-zinc-100 rounded-full z-10"></div>
                                   </div>
                                   <div className="text-right">
-                                    <div className="text-3xl font-black font-mono tracking-tight leading-none">
+                                    <div className="text-4xl font-black font-mono tracking-tight leading-none">
                                       {systemTime.toLocaleTimeString('zh-HK', { hour12: false, hour: '2-digit', minute: '2-digit' })}
                                     </div>
-                                    <div className="text-xs font-bold opacity-90 mt-1">
+                                    <div className="text-sm font-black opacity-90 mt-1.5">
                                       {systemTime.getFullYear()}年{systemTime.getMonth() + 1}月{systemTime.getDate()}日
                                     </div>
                                   </div>
                                 </div>
                                 {tile.h >= 2 && (
-                                  <div className="flex justify-between items-center text-[8px] pt-1 border-t border-white/5 opacity-70">
+                                  <div className="flex justify-between items-center text-[9px] pt-1 border-t border-white/5 opacity-70">
                                     <span>🔋 POWER: OK (100%)</span>
                                     <span>💾 INDEXEDDB: LOCAL_SYNC</span>
                                   </div>
@@ -996,7 +1009,6 @@
                               </div>
                             )}
 
-                            {/* 🔴 內建即時 W & H 的控制器 (僅在編輯模式浮現) */}
                             {isEditing && renderTileResizer(tile)}
                           </div>
                         );
@@ -1013,25 +1025,25 @@
                             onDragEnd={handleDragEnd}
                             className={`${colSpanClass} ${rowSpanClass} ${tile3DClass}`}
                           >
-                            {/* ⛅ 天氣內容隨寬高自適應 */}
+                            {/* ⛅ 天氣內容：放大文字與醒目排版 */}
                             {tile.w === 1 ? (
                               <div className="flex flex-col justify-between h-full items-center py-1">
                                 <Icons.Sun />
-                                <div className="text-lg font-black font-mono leading-none">28°C</div>
-                                <span className="text-[8px] opacity-60 font-bold">HK</span>
+                                <div className="text-xl font-black font-mono leading-none">28°C</div>
+                                <span className="text-[10px] opacity-60 font-black">HK</span>
                               </div>
                             ) : (
                               <div className="flex flex-col justify-between h-full w-full">
                                 <div className="flex items-center justify-around flex-1">
                                   <Icons.Sun />
                                   <div className="min-w-0">
-                                    <div className="text-2xl font-black leading-none font-mono">28°C</div>
-                                    <div className="text-[10px] font-black opacity-60 tracking-wider">HONG KONG</div>
-                                    <div className="text-[9px] text-zinc-400 font-bold mt-0.5">☀️ 晴朗多雲</div>
+                                    <div className="text-3xl font-black leading-none font-mono">28°C</div>
+                                    <div className="text-xs font-black opacity-60 tracking-wider">HONG KONG</div>
+                                    <div className="text-[11px] text-zinc-400 font-black mt-1">☀️ 晴朗多雲</div>
                                   </div>
                                 </div>
                                 {tile.h >= 2 && (
-                                  <div className="grid grid-cols-3 gap-1 pt-1.5 border-t border-white/5 text-center text-[8px] font-bold opacity-80">
+                                  <div className="grid grid-cols-3 gap-1 pt-1.5 border-t border-white/5 text-center text-[10px] font-black opacity-80">
                                     <div>六: ☀️ 29°</div>
                                     <div>日: 🌧️ 24°</div>
                                     <div>一: ☁️ 26°</div>
@@ -1040,13 +1052,12 @@
                               </div>
                             )}
 
-                            {/* 🔴 內建即時 W & H 的控制器 (僅在編輯模式浮現) */}
                             {isEditing && renderTileResizer(tile)}
                           </div>
                         );
                       }
 
-                      // 3. 大日曆 (Calendar Hub) - 核心修正部分：完全防溢出、Hoisted 全屏詳情按鈕
+                      // 3. 大日曆 (Calendar Hub) - 🔴 徹底解決溢出：雙週格網 + 放大字體
                       if (tile.type === 'calendar') {
                         return (
                           <div 
@@ -1065,36 +1076,35 @@
                           >
                             {/* 🗓️ 日曆內容隨尺寸自適應 */}
                             {tile.w < 3 || tile.h < 2 ? (
-                              // 尺寸不足以容納網格時 -> 顯示極具美感的復古單日大紅牌卡
                               <div className="flex flex-col justify-between h-full items-center py-1">
-                                <span className="text-[10px] font-black text-red-500 font-mono">CALENDAR</span>
-                                <div className="text-3xl font-black font-mono leading-none bg-red-600 text-white rounded-md px-3 py-1 shadow-md">
+                                <span className="text-xs font-black text-red-500 font-mono">CALENDAR</span>
+                                <div className="text-4xl font-black font-mono leading-none bg-red-600 text-white rounded-md px-3 py-1 shadow-md">
                                   {systemTime.getDate()}
                                 </div>
-                                <span className="text-[9px] font-bold opacity-60 uppercase">{weekDaysZH[systemTime.getDay()]}</span>
+                                <span className="text-[10px] font-bold opacity-60 uppercase">{weekDaysZH[systemTime.getDay()].slice(-1)}</span>
                               </div>
                             ) : (
-                              // 尺寸 3x2 或以上 -> 顯示月曆網格
+                              // 🔴 智能雙週 (14天) 首頁大格網，高度縮短完全不溢出
                               <div className="flex flex-col h-full justify-between transition-all duration-300 relative">
                                 
                                 {/* 頂部 */}
                                 <div className="flex justify-between items-center pb-1 border-b border-white/5">
                                   <div className="flex items-center gap-1.5">
                                     <Icons.Calendar />
-                                    <span className="text-[10px] font-black tracking-wider uppercase">Calendar Hub</span>
+                                    <span className="text-[11px] font-black tracking-wider uppercase">Calendar Hub</span>
                                   </div>
-                                  <span className="text-[8px] font-bold opacity-50">展開 🗓️</span>
+                                  <span className="text-[10px] font-bold opacity-60 flex items-center gap-1">展開行事曆 ➔</span>
                                 </div>
 
-                                {/* 📅 超緊湊月曆格網 */}
-                                <div className="grid grid-cols-7 gap-y-0.5 gap-x-0.5 text-center text-[8px] my-1 font-mono">
+                                {/* 📅 雙週大字體格網 (僅展示 14 天，空出底盤) */}
+                                <div className="grid grid-cols-7 gap-y-1 gap-x-0.5 text-center text-[10px] my-1.5 font-mono">
                                   {["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"].map((day, dIdx) => (
-                                    <span key={dIdx} className={`text-[7.5px] font-black tracking-wider ${dIdx === 0 ? 'text-[#cf2b1f]' : dIdx === 6 ? 'text-[#3b82f6]' : 'opacity-40'}`}>
+                                    <span key={dIdx} className={`text-[9px] font-black tracking-wider ${dIdx === 0 ? 'text-[#cf2b1f]' : dIdx === 6 ? 'text-[#3b82f6]' : 'opacity-40'}`}>
                                       {day}
                                     </span>
                                   ))}
                                   
-                                  {daysArray.map((dayObj, dIndex) => {
+                                  {homeTwoWeeksArray.map((dayObj, dIndex) => {
                                     const dateStr = getFormattedDateStr(dayObj.date);
                                     const isSelected = dateStr === selectedDateStr;
                                     const isToday = getFormattedDateStr(new Date()) === dateStr;
@@ -1107,54 +1117,55 @@
                                           playClickSound();
                                           setSelectedDateStr(dateStr);
                                         }}
-                                        className={`flex flex-col items-center justify-center relative p-0.5 rounded-md transition-all ${
-                                          dayObj.isCurrentMonth ? 'opacity-100' : 'opacity-25'
+                                        className={`flex flex-col items-center justify-center relative py-1 rounded-md transition-all ${
+                                          dayObj.isCurrentMonth ? 'opacity-100' : 'opacity-35'
                                         } ${
                                           isSelected ? 'ring-1.5 ring-[#cf2b1f] bg-[#cf2b1f]/15' : 'hover:bg-white/5'
                                         }`}
                                       >
-                                        <span className={`w-4 h-4 text-[9px] flex items-center justify-center rounded-full font-bold ${
-                                          isToday ? 'bg-[#cf2b1f] text-white font-black shadow-md' : 'opacity-85'
+                                        <span className={`w-5 h-5 text-xs flex items-center justify-center rounded-full font-black ${
+                                          isToday ? 'bg-[#cf2b1f] text-white shadow-md' : 'opacity-90'
                                         }`}>
                                           {dayObj.date.getDate()}
                                         </span>
                                         
                                         {/* 真實行程狀態點 */}
                                         <div className="flex justify-center gap-0.5 w-full mt-0.5 h-1">
-                                          {summary.hasEvents && <div className="w-1 h-1 bg-red-500 rounded-full"></div>}
-                                          {summary.hasDiaries && <div className="w-1 h-1 bg-blue-400 rounded-full"></div>}
-                                          {summary.totalExpense > 0 && <div className="w-1 h-1 bg-emerald-400 rounded-full"></div>}
-                                          {summary.hasTodos && <div className="w-1 h-1 bg-amber-400 rounded-full"></div>}
+                                          {summary.hasEvents && <div className="w-1.5 h-1.5 bg-red-500 rounded-full"></div>}
+                                          {summary.hasDiaries && <div className="w-1.5 h-1.5 bg-blue-400 rounded-full"></div>}
+                                          {summary.totalExpense > 0 && <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full"></div>}
+                                          {summary.hasTodos && <div className="w-1.5 h-1.5 bg-amber-400 rounded-full"></div>}
                                         </div>
                                       </div>
                                     );
                                   })}
                                 </div>
 
-                                {/* 📌 快速詳細摘要位置（精心調整：絕不溢出，提供完美點擊高度） */}
+                                {}
+                                {/* 📌 快速詳細摘要位置（100% 完整露出來，放大字體，毫無溢出遮擋） */}
                                 <div 
                                   onClick={(e) => { 
                                     e.stopPropagation(); 
                                     playClickSound(); 
                                     setShowQuickDetail(true); // 🔴 直接開啟 Hoisted 全屏幕當日詳情
                                   }}
-                                  className="bg-black/35 hover:bg-black/45 active:scale-[0.98] rounded-lg p-2 text-[10px] opacity-85 space-y-1 cursor-pointer transition-all border border-white/5 flex flex-col justify-center"
-                                  style={{ height: '62px' }}
+                                  className="bg-black/45 hover:bg-black/55 active:scale-[0.98] rounded-lg p-2.5 text-xs opacity-90 space-y-1.5 cursor-pointer transition-all border border-white/5 flex flex-col justify-center"
+                                  style={{ height: '70px' }}
                                 >
-                                  <div className="flex justify-between items-center text-[8px] text-zinc-400 border-b border-white/5 pb-0.5">
-                                    <span className="font-black text-[#cf2b1f] flex items-center gap-1 animate-pulse">📍 點此查看當日完整詳情 ➔</span>
+                                  <div className="flex justify-between items-center text-[10px] text-zinc-400 border-b border-white/5 pb-1">
+                                    <span className="font-black text-[#cf2b1f] flex items-center gap-1 animate-pulse">📍 點擊看當日完整詳情 ➔</span>
                                     <div className="flex gap-1">
-                                      <span className={`w-1 h-1 rounded-full ${syncSettings.googleStatus === 'connected' ? 'bg-emerald-500' : 'bg-zinc-600'}`} />
-                                      <span className={`w-1 h-1 rounded-full ${syncSettings.icloudStatus === 'connected' ? 'bg-sky-400' : 'bg-zinc-600'}`} />
+                                      <span className={`w-1.5 h-1.5 rounded-full ${syncSettings.googleStatus === 'connected' ? 'bg-emerald-500' : 'bg-zinc-600'}`} />
+                                      <span className={`w-1.5 h-1.5 rounded-full ${syncSettings.icloudStatus === 'connected' ? 'bg-sky-400' : 'bg-zinc-600'}`} />
                                     </div>
                                   </div>
 
-                                  <div className="flex justify-between items-center text-[8.5px]">
+                                  <div className="flex justify-between items-center text-xs">
                                     <span className="font-bold text-zinc-300">行程與任務:</span>
                                     <span className="font-black font-mono">{events.filter(e => e.date === selectedDateStr).length} 活動 | {selectedDayData.todoDoneCount}/{selectedDayData.todoTotalCount} 任務</span>
                                   </div>
 
-                                  <div className="pt-0.5 border-t border-white/10 flex justify-between items-center text-[8.5px]">
+                                  <div className="pt-0.5 border-t border-white/10 flex justify-between items-center text-xs">
                                     <span className="font-bold text-emerald-400">生活記帳支出:</span>
                                     <span className="font-black font-mono text-emerald-400">${selectedDayData.totalExpense}</span>
                                   </div>
@@ -1163,7 +1174,6 @@
                               </div>
                             )}
 
-                            {/* 🔴 內建即時 W & H 的控制器 (僅在編輯模式浮現) */}
                             {isEditing && renderTileResizer(tile)}
                           </div>
                         );
@@ -1181,33 +1191,32 @@
                             onClick={() => !isEditing && playClickSound() || setActiveApp('diary')}
                             className={`${colSpanClass} ${rowSpanClass} ${tile3DClass}`}
                           >
-                            {/* 📝 隨筆內容隨 W 自適應 */}
+                            {/* 📝 隨筆內容：放大字體與摘要 */}
                             {tile.w === 1 ? (
                               <div className="flex flex-col justify-between h-full items-start">
-                                <div className={`w-8 h-8 rounded-full ${currentTheme.badge} flex items-center justify-center shadow-inner`}>
+                                <div className={`w-9 h-9 rounded-full ${currentTheme.badge} flex items-center justify-center shadow-inner`}>
                                   <Icons.Book />
                                 </div>
                                 <div>
-                                  <span className="text-[8px] font-black tracking-widest uppercase block opacity-60">Diary</span>
-                                  <span className="text-[11px] font-black">日記隨筆</span>
+                                  <span className="text-[10px] font-black tracking-widest uppercase block opacity-60">Diary</span>
+                                  <span className="text-xs font-black">日記隨筆</span>
                                 </div>
                               </div>
                             ) : (
                               <div className="flex flex-col justify-between h-full w-full">
                                 <div className="flex justify-between items-center">
-                                  <div className={`w-8 h-8 rounded-full ${currentTheme.badge} flex items-center justify-center`}>
+                                  <div className={`w-9 h-9 rounded-full ${currentTheme.badge} flex items-center justify-center`}>
                                     <Icons.Book />
                                   </div>
-                                  <span className="text-[9px] font-bold opacity-60">最新草稿 ✍️</span>
+                                  <span className="text-xs font-black opacity-70">最新草稿 ✍️</span>
                                 </div>
-                                <div className="text-[10px] text-zinc-300 font-semibold truncate italic my-1 pr-1 border-l-2 border-[#cf2b1f] pl-1.5">
+                                <div className="text-xs text-zinc-200 font-bold truncate italic my-1.5 pr-1 border-l-2 border-[#cf2b1f] pl-1.5">
                                   "{diaries[0]?.text || '今天尚未開始書寫任何隨筆靈感...'}"
                                 </div>
-                                <span className="text-[9px] font-black uppercase opacity-60">Diary & Thoughts</span>
+                                <span className="text-[10px] font-black uppercase opacity-60">Diary & Thoughts</span>
                               </div>
                             )}
 
-                            {/* 🔴 內建即時 W & H 的控制器 (僅在編輯模式浮現) */}
                             {isEditing && renderTileResizer(tile)}
                           </div>
                         );
@@ -1225,33 +1234,32 @@
                             onClick={() => !isEditing && playClickSound() || setActiveApp('expense')}
                             className={`${colSpanClass} ${rowSpanClass} ${tile3DClass}`}
                           >
-                            {/* 💵 記帳內容隨 W 自適應 */}
+                            {/* 💵 記帳內容：放大字體 */}
                             {tile.w === 1 ? (
                               <div className="flex flex-col justify-between h-full items-start">
-                                <div className={`w-8 h-8 rounded-full ${currentTheme.badge} flex items-center justify-center shadow-inner`}>
+                                <div className={`w-9 h-9 rounded-full ${currentTheme.badge} flex items-center justify-center shadow-inner`}>
                                   <Icons.Dollar />
                                 </div>
                                 <div>
-                                  <span className="text-[8px] font-black tracking-widest uppercase block opacity-60">Ledger</span>
-                                  <span className="text-[11px] font-black">生活記帳</span>
+                                  <span className="text-[10px] font-black tracking-widest uppercase block opacity-60">Ledger</span>
+                                  <span className="text-xs font-black">生活記帳</span>
                                 </div>
                               </div>
                             ) : (
                               <div className="flex flex-col justify-between h-full w-full">
                                 <div className="flex justify-between items-center">
-                                  <div className={`w-8 h-8 rounded-full ${currentTheme.badge} flex items-center justify-center`}>
+                                  <div className={`w-9 h-9 rounded-full ${currentTheme.badge} flex items-center justify-center`}>
                                     <Icons.Dollar />
                                   </div>
-                                  <span className="text-[9px] text-emerald-400 font-black font-mono">本日累計</span>
+                                  <span className="text-xs text-emerald-400 font-black">本日累計</span>
                                 </div>
-                                <div className="text-xl font-black font-mono text-emerald-400 tracking-tighter text-center my-1">
+                                <div className="text-2xl font-black font-mono text-emerald-400 tracking-tighter text-center my-1.5">
                                   ${selectedDayData.totalExpense}
                                 </div>
-                                <span className="text-[9px] font-black uppercase opacity-60">Expense Tracker</span>
+                                <span className="text-[10px] font-black uppercase opacity-60">Expense Tracker</span>
                               </div>
                             )}
 
-                            {/* 🔴 內建即時 W & H 的控制器 (僅在編輯模式浮現) */}
                             {isEditing && renderTileResizer(tile)}
                           </div>
                         );
@@ -1269,33 +1277,32 @@
                             onClick={() => !isEditing && playClickSound() || setActiveApp('todo')}
                             className={`${colSpanClass} ${rowSpanClass} ${tile3DClass}`}
                           >
-                            {/* 📋 待辦內容隨 W 自適應 */}
+                            {/* 📋 待辦內容：大字體排版 */}
                             {tile.w === 1 ? (
                               <div className="flex flex-col justify-between h-full items-start">
-                                <div className={`w-8 h-8 rounded-full ${currentTheme.badge} flex items-center justify-center shadow-inner`}>
+                                <div className={`w-9 h-9 rounded-full ${currentTheme.badge} flex items-center justify-center shadow-inner`}>
                                   <Icons.CheckSquare />
                                 </div>
                                 <div>
-                                  <span className="text-[8px] font-black tracking-widest uppercase block opacity-60">To-Do</span>
-                                  <span className="text-[11px] font-black">任務待辦</span>
+                                  <span className="text-[10px] font-black tracking-widest uppercase block opacity-60">To-Do</span>
+                                  <span className="text-xs font-black">任務待辦</span>
                                 </div>
                               </div>
                             ) : (
                               <div className="flex flex-col justify-between h-full w-full">
                                 <div className="flex justify-between items-center">
-                                  <div className={`w-8 h-8 rounded-full ${currentTheme.badge} flex items-center justify-center`}>
+                                  <div className={`w-9 h-9 rounded-full ${currentTheme.badge} flex items-center justify-center`}>
                                     <Icons.CheckSquare />
                                   </div>
-                                  <span className="text-[9px] font-bold opacity-60">{selectedDayData.todoDoneCount}/{selectedDayData.todoTotalCount} 完成</span>
+                                  <span className="text-xs font-black opacity-70">{selectedDayData.todoDoneCount}/{selectedDayData.todoTotalCount} 完成</span>
                                 </div>
-                                <div className="text-[9.5px] text-zinc-300 font-semibold truncate my-1 border-l-2 border-amber-500 pl-1.5">
+                                <div className="text-xs text-zinc-200 font-bold truncate my-1.5 border-l-2 border-amber-500 pl-1.5">
                                   {selectedDayTodos.filter(t => !t.completed)[0]?.text || '🎉 今日任務已全數搞定！'}
                                 </div>
-                                <span className="text-[9px] font-black uppercase opacity-60">Tasks Ledger</span>
+                                <span className="text-[10px] font-black uppercase opacity-60">Tasks Ledger</span>
                               </div>
                             )}
 
-                            {/* 🔴 內建即時 W & H 的控制器 (僅在編輯模式浮現) */}
                             {isEditing && renderTileResizer(tile)}
                           </div>
                         );
@@ -1313,34 +1320,33 @@
                             onClick={() => !isEditing && playClickSound() || setActiveApp('settings')}
                             className={`${colSpanClass} ${rowSpanClass} ${tile3DClass}`}
                           >
-                            {/* ⚙️ 設定內容隨 W 自適應 */}
+                            {/* ⚙️ 設定內容：放大字型與配置細目 */}
                             {tile.w === 1 ? (
                               <div className="flex flex-col justify-between h-full items-start">
-                                <div className={`w-8 h-8 rounded-full ${currentTheme.badge} flex items-center justify-center shadow-inner`}>
+                                <div className={`w-9 h-9 rounded-full ${currentTheme.badge} flex items-center justify-center shadow-inner`}>
                                   <Icons.Settings />
                                 </div>
                                 <div>
-                                  <span className="text-[8px] font-black tracking-widest uppercase block opacity-60">System</span>
-                                  <span className="text-[11px] font-black">系統同步</span>
+                                  <span className="text-[10px] font-black tracking-widest uppercase block opacity-60">System</span>
+                                  <span className="text-xs font-black">系統同步</span>
                                 </div>
                               </div>
                             ) : (
                               <div className="flex flex-col justify-between h-full w-full">
                                 <div className="flex justify-between items-center">
-                                  <div className={`w-8 h-8 rounded-full ${currentTheme.badge} flex items-center justify-center`}>
+                                  <div className={`w-9 h-9 rounded-full ${currentTheme.badge} flex items-center justify-center`}>
                                     <Icons.Settings />
                                   </div>
-                                  <span className="text-[9px] font-bold opacity-60">系統偏好⚙️</span>
+                                  <span className="text-xs font-black opacity-70">系統偏好⚙️</span>
                                 </div>
-                                <div className="text-[9px] text-zinc-300 font-semibold my-1 space-y-0.5">
+                                <div className="text-xs text-zinc-200 font-bold my-1.5 space-y-0.5">
                                   <p>• 點擊音效: {syncSettings.soundEffects ? '已開啟' : '已關閉'}</p>
                                   <p className="truncate">• 雲端同步: {syncSettings.googleStatus === 'connected' ? 'Google啟用' : '本地單機'}</p>
                                 </div>
-                                <span className="text-[9px] font-black uppercase opacity-60">Config Panel</span>
+                                <span className="text-[10px] font-black uppercase opacity-60">Config Panel</span>
                               </div>
                             )}
 
-                            {/* 🔴 內建即時 W & H 的控制器 (僅在編輯模式浮現) */}
                             {isEditing && renderTileResizer(tile)}
                           </div>
                         );
@@ -1353,6 +1359,7 @@
               </div>
 
               {/* ==================== APP 子頁面 ==================== */}
+              {}
               <div 
                 className={`transition-ios absolute inset-0 p-3 flex flex-col overflow-hidden ${
                   activeApp !== null 
@@ -1363,14 +1370,14 @@
                 {displayedApp && (
                   <div className="h-full flex flex-col min-h-0 overflow-y-auto scrollbar-none">
                     
-                    {/* 🍏 導航標題列：iOS 原生置中技術 */}
-                    <div className="relative flex items-center justify-between mb-5 pb-3 border-b border-neutral-800 min-h-[40px]">
+                    {/* 🍏 導航標題列：iOS 原生置中技術，放大標題 */}
+                    <div className="relative flex items-center justify-between mb-5 pb-3 border-b border-neutral-800 min-h-[44px]">
                       <button 
                         onClick={() => playClickSound() || setActiveApp(null)}
-                        className="flex items-center gap-1.5 text-sm text-[#cf2b1f] hover:text-red-400 font-black py-1 px-2.5 -ml-2 rounded-lg hover:bg-neutral-900 transition-colors z-10"
+                        className="flex items-center gap-1.5 text-sm text-[#cf2b1f] hover:text-red-400 font-black py-1.5 px-3 -ml-2 rounded-lg hover:bg-neutral-900 transition-colors z-10"
                       >
                         <Icons.ChevronLeft />
-                        <span>首頁</span>
+                        <span className="text-xs">首頁</span>
                       </button>
                       
                       <h2 className="absolute inset-x-0 text-center text-sm font-black tracking-widest text-zinc-100 pointer-events-none z-0">
@@ -1384,11 +1391,11 @@
                       <div className="w-12 z-10"></div>
                     </div>
 
-                    <div className="flex-1 flex flex-col min-h-0 overflow-y-auto scrollbar-none">
+                    <div className="flex-1 flex flex-col min-h-0 overflow-y-auto scrollbar-none space-y-4">
                       
                       {/* 1. 日曆整合頁 */}
                       {displayedApp === 'calendar' && (
-                        <div className="space-y-4">
+                        <div className="space-y-4 font-sans">
                           <div className="flex justify-between items-center bg-[#1a1c20] p-3 rounded-2xl border border-neutral-800">
                             <button 
                               onClick={() => { playClickSound(); setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() - 1))); }}
@@ -1407,7 +1414,8 @@
                             </button>
                           </div>
 
-                          <div className="bg-[#1e2229] rounded-[16px] p-4 border border-neutral-800">
+                          {/* 子頁面仍展示整月完整格網 */}
+                          <div className="bg-[#1e2229] rounded-[16px] p-4 border border-neutral-800 shadow-md">
                             <div className="grid grid-cols-7 gap-1 text-center text-xs font-black mb-3">
                               {["日", "一", "二", "三", "四", "五", "六"].map((day, idx) => (
                                 <span key={idx} className={idx === 0 ? 'text-[#cf2b1f]' : idx === 6 ? 'text-blue-400' : 'text-zinc-500'}>
@@ -1455,7 +1463,7 @@
                             </div>
                           </div>
 
-                          <div className="bg-[#1a1c20] rounded-[16px] p-4 border border-neutral-800 transition-all duration-300">
+                          <div className="bg-[#1a1c20] rounded-[16px] p-4 border border-neutral-800 transition-all duration-300 shadow-md">
                             <button
                               type="button"
                               onClick={() => { playClickSound(); setIsAddEventOpen(!isAddEventOpen); }}
@@ -1463,7 +1471,7 @@
                             >
                               <div className="flex items-center gap-2">
                                 <Icons.Activity />
-                                <h3 className="text-sm font-black text-zinc-100 group-hover:text-white transition-colors">新增指定日行程</h3>
+                                <h3 className="text-xs font-black text-zinc-100 group-hover:text-white transition-colors">新增指定日行程</h3>
                               </div>
                               <div className="p-1 rounded-lg hover:bg-zinc-800/50 transition-colors">
                                 <Icons.ChevronDown className={`transform transition-transform duration-300 ${isAddEventOpen ? 'rotate-180 text-[#cf2b1f]' : ''}`} />
@@ -1471,7 +1479,7 @@
                             </button>
                             
                             {isAddEventOpen && (
-                              <form onSubmit={handleAddEvent} className="mt-3 space-y-3 pt-3 border-t border-neutral-800/60 animate-fadeIn font-sans">
+                              <form onSubmit={handleAddEvent} className="mt-3 space-y-3 pt-3 border-t border-neutral-800/60 animate-fadeIn">
                                 <div className="grid grid-cols-2 gap-2">
                                   <div>
                                     <label className="block text-[10px] text-zinc-500 uppercase font-bold mb-1">行程名稱</label>
@@ -1539,8 +1547,8 @@
                           </div>
 
                           {/* 精細清單 */}
-                          <div className="bg-[#1a1c20] rounded-[16px] p-5 border border-neutral-800 space-y-4">
-                            <h3 className="text-sm font-black text-[#cf2b1f] tracking-wider uppercase border-b border-neutral-800 pb-2.5">
+                          <div className="bg-[#1a1c20] rounded-[16px] p-5 border border-neutral-800 space-y-4 shadow-md">
+                            <h3 className="text-xs font-black text-[#cf2b1f] tracking-wider uppercase border-b border-neutral-800 pb-2.5">
                               📅 {selectedDateStr} 生活整合清單
                             </h3>
 
@@ -1641,12 +1649,12 @@
                       {/* 2. 隨筆與日記頁 */}
                       {displayedApp === 'diary' && (
                         <div className="space-y-4">
-                          <div className="bg-[#1a1c20] p-3 rounded-2xl flex justify-between items-center">
+                          <div className="bg-[#1a1c20] p-3 rounded-2xl flex justify-between items-center border border-neutral-800">
                             <span className="text-xs text-zinc-500 font-bold uppercase">日曆同步狀態</span>
                             <span className="text-xs font-black text-[#cf2b1f] font-mono bg-neutral-900 px-3 py-1 rounded-full">{selectedDateStr}</span>
                           </div>
 
-                          <form onSubmit={handleAddDiary} className="space-y-3 bg-[#1a1c20] p-4 rounded-[16px] border border-neutral-800">
+                          <form onSubmit={handleAddDiary} className="space-y-3 bg-[#1a1c20] p-4 rounded-[24px] border border-neutral-800 shadow-md">
                             <div className="grid grid-cols-2 gap-2">
                               <button
                                 type="button"
@@ -1753,7 +1761,7 @@
                           </div>
 
                           {/* 財務比例視覺圖表 */}
-                          <div className="bg-[#1a1c20] p-4 rounded-2xl border border-neutral-800 space-y-3">
+                          <div className="bg-[#1a1c20] p-4 rounded-2xl border border-neutral-800 space-y-3 shadow-md">
                             <div className="flex justify-between items-center border-b border-neutral-800 pb-2">
                               <span className="text-xs font-black text-zinc-400 flex items-center gap-1">
                                 <Icons.Activity /> 財務分類與消費佔比
@@ -1808,7 +1816,7 @@
                             )}
                           </div>
 
-                          <form onSubmit={handleAddExpense} className="space-y-3 bg-[#1a1c20] p-4 rounded-[16px] border border-neutral-800">
+                          <form onSubmit={handleAddExpense} className="space-y-3 bg-[#1a1c20] p-4 rounded-[24px] border border-neutral-800 shadow-md">
                             <div className="grid grid-cols-2 gap-2">
                               <div>
                                 <label className="block text-[10px] text-zinc-500 uppercase font-black mb-1">消費金額 ($)</label>
@@ -1855,7 +1863,7 @@
                           <div className="space-y-2">
                             <h3 className="text-xs font-black text-zinc-500 uppercase px-1">全歷史記帳清單 ({expenses.length})</h3>
                             {expenses.map(item => (
-                              <div key={item.id} className="bg-[#1a1c20]/50 p-3.5 rounded-2xl border border-neutral-800/60 flex justify-between items-center">
+                              <div key={item.id} className="bg-[#1a1c20]/50 p-3.5 rounded-2xl border border-neutral-800/60 flex justify-between items-center shadow-inner">
                                 <div className="space-y-1">
                                   <div className="flex items-center gap-2">
                                     <span className={`text-[9px] px-2 py-0.5 rounded font-black ${categoryColors[item.category] || 'bg-zinc-600'} text-white`}>
@@ -1938,8 +1946,9 @@
                       {displayedApp === 'settings' && (
                         <div className="space-y-3.5 pb-6">
                           
+                          {}
                           {/* 首頁瓷磚配色自訂主題 */}
-                          <div className="bg-[#1a1c20] rounded-[16px] border border-neutral-800 overflow-hidden">
+                          <div className="bg-[#1a1c20] rounded-[24px] border border-neutral-800 overflow-hidden shadow-md">
                             <button
                               onClick={() => { playClickSound(); setActiveSettingSection(activeSettingSection === 'colors' ? null : 'colors'); }}
                               className="w-full flex justify-between items-center p-4 text-left font-black text-xs text-zinc-200 hover:bg-neutral-900"
@@ -1983,7 +1992,7 @@
                           </div>
 
                           {/* 擬真按鍵音 */}
-                          <div className="bg-[#1a1c20] rounded-[16px] border border-neutral-800 overflow-hidden">
+                          <div className="bg-[#1a1c20] rounded-[24px] border border-neutral-800 overflow-hidden shadow-md">
                             <button
                               onClick={() => { playClickSound(); setActiveSettingSection(activeSettingSection === 'sound' ? null : 'sound'); }}
                               className="w-full flex justify-between items-center p-4 text-left font-black text-xs text-zinc-200 hover:bg-neutral-900"
@@ -2015,7 +2024,7 @@
                           </div>
 
                           {/* 雲端行事曆真實同步 (Google OAuth & iCloud ICS) */}
-                          <div className="bg-[#1a1c20] rounded-[16px] border border-neutral-800 overflow-hidden">
+                          <div className="bg-[#1a1c20] rounded-[24px] border border-neutral-800 overflow-hidden shadow-md">
                             <button
                               onClick={() => { playClickSound(); setActiveSettingSection(activeSettingSection === 'sync' ? null : 'sync'); }}
                               className="w-full flex justify-between items-center p-4 text-left font-black text-xs text-zinc-200 hover:bg-neutral-900"
@@ -2051,7 +2060,7 @@
                                   />
                                   <div className="flex gap-2">
                                     {syncSettings.googleStatus !== 'connected' ? (
-                                      <button onClick={handleGoogleSync} className="flex-1 py-1.5 bg-emerald-700 text-white text-xs font-bold rounded-lg">
+                                      <button onClick={handleGoogleSync} className="flex-1 py-1.5 bg-emerald-700 text-white text-xs font-bold rounded-lg animate-pulse">
                                         進行授權登入
                                       </button>
                                     ) : (
@@ -2085,7 +2094,7 @@
                                   />
                                   <div className="flex gap-2">
                                     {syncSettings.icloudStatus !== 'connected' ? (
-                                      <button onClick={handleICloudSync} className="flex-1 py-1.5 bg-sky-700 text-white text-xs font-bold rounded-lg">
+                                      <button onClick={handleICloudSync} className="flex-1 py-1.5 bg-sky-700 text-white text-xs font-bold rounded-lg animate-pulse">
                                         開始解析並訂閱
                                       </button>
                                     ) : (
@@ -2107,7 +2116,7 @@
                           </div>
 
                           {/* 一般設定 */}
-                          <div className="bg-[#1a1c20] rounded-[16px] border border-neutral-800 overflow-hidden">
+                          <div className="bg-[#1a1c20] rounded-[24px] border border-neutral-800 overflow-hidden shadow-md">
                             <button
                               onClick={() => { playClickSound(); setActiveSettingSection(activeSettingSection === 'general' ? null : 'general'); }}
                               className="w-full flex justify-between items-center p-4 text-left font-black text-xs text-zinc-200 hover:bg-neutral-900"
@@ -2172,7 +2181,7 @@
                           </div>
 
                           {/* 備份庫 */}
-                          <div className="bg-[#1a1c20] rounded-[16px] border border-neutral-800 overflow-hidden">
+                          <div className="bg-[#1a1c20] rounded-[24px] border border-neutral-800 overflow-hidden shadow-md">
                             <button
                               onClick={() => { playClickSound(); setActiveSettingSection(activeSettingSection === 'backup' ? null : 'backup'); }}
                               className="w-full flex justify-between items-center p-4 text-left font-black text-xs text-zinc-200 hover:bg-neutral-900"
@@ -2187,7 +2196,7 @@
                                   <button onClick={handleExportData} className="py-2 bg-neutral-900 border border-neutral-800 text-zinc-200 text-[11px] font-black rounded-xl flex items-center justify-center gap-1.5">
                                     <Icons.Download /> 匯出備份 JSON
                                   </button>
-                                  <label className="py-2 bg-neutral-900 border border-neutral-800 text-zinc-200 text-[11px] font-black rounded-xl flex items-center justify-center gap-1.5 cursor-pointer text-center">
+                                  <label className="py-2 bg-neutral-900 border border-neutral-800 text-zinc-200 text-[11px] font-black rounded-xl flex items-center justify-center gap-1.5 cursor-pointer text-center text-xs">
                                     <Icons.Upload /> 匯入備份 JSON
                                     <input type="file" accept=".json" onChange={handleImportData} className="hidden" />
                                   </label>
@@ -2208,7 +2217,8 @@
                 )}
               </div>
 
-              {/* 🟢 STREAMING_CHUNK: 渲染 iOS 原生「全屏幕沉浸式當日詳情抽屜」 overlays the phone container */}
+              {/* ==================== iOS Bottom Sheet (全屏幕詳情抽屜) ==================== */}
+              {}
               {showQuickDetail && (
                 <div 
                   className="absolute inset-0 bg-black/75 backdrop-blur-md z-50 flex flex-col justify-end animate-fadeIn"
@@ -2235,12 +2245,12 @@
                       </button>
                     </div>
 
-                    {/* 🍏 可完美局部滾動的舒適面板內容區，徹底杜絕裁切問題！ */}
+                    {/* 🍏 可完美局部滾動的舒適面板內容區，徹底杜絕裁切與遺失問題！ */}
                     <div className="flex-1 overflow-y-auto p-5 space-y-5 scrollbar-none pb-12">
                       
                       {/* 1. 當日行程 */}
                       <div>
-                        <div className="text-xs font-black text-[#cf2b1f] uppercase tracking-wider mb-2 pb-1 border-b border-[#cf2b1f]/10">
+                        <div className="text-xs font-black text-[#cf2b1f] uppercase tracking-wider mb-2 pb-1 border-b border-[#cf2b1f]/15">
                           📌 行程安排 ({selectedDayEvents.length})
                         </div>
                         {selectedDayEvents.length === 0 ? (
@@ -2248,12 +2258,12 @@
                         ) : (
                           <div className="space-y-1.5">
                             {selectedDayEvents.map(ev => (
-                              <div key={ev.id} className="flex justify-between items-center bg-white/5 px-3 py-2 rounded-xl border border-white/5">
-                                <div className="min-w-0">
-                                  <div className="text-xs font-bold text-zinc-100">{ev.title}</div>
+                              <div key={ev.id} className="flex justify-between items-center bg-white/5 px-3 py-2.5 rounded-xl border border-white/5">
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-xs font-black text-zinc-100">{ev.title}</div>
                                   {ev.desc && <p className="text-[10px] text-zinc-500 truncate mt-0.5">{ev.desc}</p>}
                                 </div>
-                                <span className="text-[10px] text-zinc-400 font-mono font-bold bg-black/40 px-2 py-0.5 rounded ml-2 shrink-0">{ev.time}</span>
+                                <span className="text-[10px] text-zinc-300 font-mono font-black bg-black/40 px-2 py-0.5 rounded ml-2 shrink-0">{ev.time}</span>
                               </div>
                             ))}
                           </div>
@@ -2262,7 +2272,7 @@
 
                       {/* 2. 待辦任務 */}
                       <div>
-                        <div className="text-xs font-black text-amber-500 uppercase tracking-wider mb-2 pb-1 border-b border-amber-500/10">
+                        <div className="text-xs font-black text-amber-500 uppercase tracking-wider mb-2 pb-1 border-b border-amber-500/15">
                           📋 待辦任務 ({selectedDayTodos.length})
                         </div>
                         {selectedDayTodos.length === 0 ? (
@@ -2273,12 +2283,12 @@
                               <div 
                                 key={todo.id} 
                                 onClick={() => toggleTodo(todo.id)}
-                                className="flex items-center gap-2.5 bg-white/5 px-3 py-2 rounded-xl border border-white/5 cursor-pointer hover:bg-white/10"
+                                className="flex items-center gap-2.5 bg-white/5 px-3 py-2.5 rounded-xl border border-white/5 cursor-pointer hover:bg-white/10"
                               >
                                 <div className={`w-4 h-4 rounded-full border border-neutral-600 flex items-center justify-center shrink-0 transition-all ${todo.completed ? 'bg-emerald-500 border-emerald-500' : 'bg-black/40'}`}>
                                   {todo.completed && <Icons.Check className="scale-[0.5] text-white" />}
                                 </div>
-                                <span className={`text-xs truncate ${todo.completed ? 'line-through text-zinc-500' : 'text-zinc-200 font-medium'}`}>{todo.text}</span>
+                                <span className={`text-xs truncate ${todo.completed ? 'line-through text-zinc-500' : 'text-zinc-200 font-black'}`}>{todo.text}</span>
                               </div>
                             ))}
                           </div>
@@ -2287,29 +2297,29 @@
 
                       {/* 3. 隨筆日記與心情天氣 */}
                       <div>
-                        <div className="text-xs font-black text-blue-400 uppercase tracking-wider mb-2 pb-1 border-b border-blue-400/10">
+                        <div className="text-xs font-black text-blue-400 uppercase tracking-wider mb-2 pb-1 border-b border-blue-400/15">
                           📝 心情日記與隨筆 ({selectedDayDiaries.length})
                         </div>
                         {selectedDayDiaries.length === 0 ? (
-                          <p className="text-xs text-zinc-500 italic pl-1">今日尚無書寫靈感隨筆</p>
+                          <p className="text-xs text-zinc-500 italic pl-1">今日尚無書寫隨筆</p>
                         ) : (
                           <div className="space-y-2">
                             {selectedDayDiaries.map(d => (
-                              <div key={d.id} className="bg-white/5 p-3 rounded-xl border border-white/5">
-                                <div className="flex justify-between items-center mb-1.5 text-[10px] text-zinc-500 font-bold font-mono">
+                              <div key={d.id} className="bg-white/5 p-3.5 rounded-xl border border-white/5">
+                                <div className="flex justify-between items-center mb-2 text-[10px] text-zinc-500 font-bold font-mono">
                                   <span>{d.category === 'idea' ? '💡 靈感點子' : '📖 心情日記'}</span>
-                                  <span className="bg-black/30 px-2 py-0.5 rounded text-xs">{d.mood || '😊'} {d.weather || '☀️'}</span>
+                                  <span className="bg-black/30 px-2.5 py-0.5 rounded text-xs">{d.mood || '😊'} {d.weather || '☀️'}</span>
                                 </div>
-                                <p className="text-xs text-zinc-200 leading-relaxed whitespace-pre-wrap">{d.text}</p>
+                                <p className="text-xs text-zinc-200 leading-relaxed whitespace-pre-wrap font-medium">{d.text}</p>
                               </div>
                             ))}
                           </div>
                         )}
                       </div>
 
-                      {/* 4. 生活記帳消費 */}
+                      {/* 4. 生活記帳消費 (此處能 100% 完整看到了！) */}
                       <div>
-                        <div className="text-xs font-black text-emerald-400 uppercase tracking-wider mb-2 pb-1 border-b border-emerald-400/10">
+                        <div className="text-xs font-black text-emerald-400 uppercase tracking-wider mb-2 pb-1 border-b border-emerald-400/15">
                           💵 生活記帳與支出明細 ({selectedDayExpenses.length})
                         </div>
                         {selectedDayExpenses.length === 0 ? (
@@ -2317,12 +2327,12 @@
                         ) : (
                           <div className="space-y-1.5 font-mono">
                             {selectedDayExpenses.map(item => (
-                              <div key={item.id} className="flex justify-between items-center bg-white/5 px-3 py-2 rounded-xl border border-white/5">
-                                <div className="min-w-0">
-                                  <div className="text-xs font-bold text-zinc-200">{item.description}</div>
+                              <div key={item.id} className="flex justify-between items-center bg-white/5 px-3 py-2.5 rounded-xl border border-white/5">
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-xs font-black text-zinc-100">{item.description}</div>
                                   <span className="text-[9px] bg-emerald-950/40 text-emerald-400 font-black px-1.5 py-0.5 rounded uppercase mt-1 inline-block">{item.category}</span>
                                 </div>
-                                <span className="text-sm font-black text-emerald-400 ml-2shrink-0">${item.amount}</span>
+                                <span className="text-sm font-black text-emerald-400 ml-2 shrink-0">${item.amount}</span>
                               </div>
                             ))}
                             <div className="flex justify-between items-center pt-2.5 px-1 border-t border-white/10 text-xs font-black text-emerald-400">
@@ -2361,18 +2371,17 @@
       );
 
       // 🔴 編輯狀態下，繪製於方塊正中心的「高質感模組化尺寸拉伸控制器」
-      // 直接覆蓋於方塊上，並顯示 W 與 H 選擇。不會破壞抖動預覽，又能讓用戶直覺修改！
       function renderTileResizer(tile) {
         return (
           <div 
             onClick={(e) => e.stopPropagation()} // 阻斷 click 防止跳轉子頁
             className="absolute inset-0 bg-black/85 backdrop-blur-xs flex flex-col items-center justify-center p-1.5 z-30 rounded-[8px] animate-fadeIn text-white gap-1.5"
           >
-            <span className="text-[9px] font-black uppercase tracking-widest text-[#cf2b1f] text-center leading-none">調整方格尺寸</span>
+            <span className="text-[10px] font-black uppercase tracking-widest text-[#cf2b1f] text-center leading-none">調整方格尺寸</span>
             
             <div className="flex flex-col gap-1 w-full max-w-[100px]">
               {/* 寬度控制 */}
-              <div className="flex items-center justify-between text-[8px] gap-1">
+              <div className="flex items-center justify-between text-[9px] gap-1">
                 <span className="font-bold opacity-75">寬(W):</span>
                 <div className="flex gap-0.5">
                   {[1, 2, 3].map(wVal => (
@@ -2380,7 +2389,7 @@
                       key={wVal}
                       type="button"
                       onClick={() => resizeTile(tile.id, 'w', wVal)}
-                      className={`w-5 h-4 text-[9px] rounded font-mono font-bold transition-all flex items-center justify-center ${
+                      className={`w-5 h-4.5 text-[10px] rounded font-mono font-black transition-all flex items-center justify-center ${
                         tile.w === wVal ? 'bg-[#cf2b1f] text-white shadow-md' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
                       }`}
                     >
@@ -2391,7 +2400,7 @@
               </div>
 
               {/* 高度控制 */}
-              <div className="flex items-center justify-between text-[8px] gap-1">
+              <div className="flex items-center justify-between text-[9px] gap-1">
                 <span className="font-bold opacity-75">高(H):</span>
                 <div className="flex gap-0.5">
                   {[1, 2, 3].map(hVal => (
@@ -2399,7 +2408,7 @@
                       key={hVal}
                       type="button"
                       onClick={() => resizeTile(tile.id, 'h', hVal)}
-                      className={`w-5 h-4 text-[9px] rounded font-mono font-bold transition-all flex items-center justify-center ${
+                      className={`w-5 h-4.5 text-[10px] rounded font-mono font-black transition-all flex items-center justify-center ${
                         tile.h === hVal ? 'bg-[#cf2b1f] text-white shadow-md' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
                       }`}
                     >
